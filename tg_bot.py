@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from telegram import Update
+from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import (CallbackContext, CommandHandler, Filters,
                           MessageHandler, Updater)
 
@@ -8,7 +8,10 @@ from telegram.ext import (CallbackContext, CommandHandler, Filters,
 def start(update: Update, context: CallbackContext) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
-    update.message.reply_text(f'Hi {user.full_name}!')
+    reply_keyboard = [['Новый вопрос', 'Сдаться'], ['Мой счет']]
+    update.message.reply_text(f'Hi {user.full_name}!',
+                              reply_markup=ReplyKeyboardMarkup(
+                                  reply_keyboard, resize_keyboard=True))
 
 
 def help_command(update: Update, context: CallbackContext) -> None:
