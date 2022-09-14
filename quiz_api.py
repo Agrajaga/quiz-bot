@@ -1,7 +1,7 @@
 import re
 
 
-def get_quiz(filename: str) -> dict:
+def load_quiz(filename: str) -> dict:
     with open(filename, "r", encoding="KOI8-R") as quiz_file:
         file_contents = quiz_file.read()
 
@@ -24,5 +24,5 @@ def get_quiz(filename: str) -> dict:
 
 
 if __name__ == "__main__":
-    quiz = get_quiz("questions/1vs1201.txt")
+    quiz = load_quiz("questions/1vs1201.txt")
     print(quiz)

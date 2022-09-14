@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import (CallbackContext, CommandHandler, Filters,
                           MessageHandler, Updater)
-from quiz_fetch import get_quiz
+from quiz_api import load_quiz
 
 
 def start(update: Update, context: CallbackContext) -> None:
@@ -23,7 +23,7 @@ def help_command(update: Update, context: CallbackContext) -> None:
 def handle_quiz_commands(update: Update, context: CallbackContext) -> None:
     """Handle user commands"""
     if update.message.text == 'Новый вопрос':
-        question = get_quiz("questions/1vs1201.txt")[1]['question']
+        question = load_quiz("questions/1vs1201.txt")[1]['question']
         update.message.reply_text(question)
 
 
