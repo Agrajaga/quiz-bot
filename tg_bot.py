@@ -55,6 +55,18 @@ def handle_solution_attempt(
     return Status.ATTEMPT
 
 
+def handle_surrender(
+    update: Update,
+    context: CallbackContext,
+    bot_db: redis.Redis,
+    quiz: dict,
+) -> None:
+    user_id = update.effective_user.id
+    correct_answer = quiz.get(bot_db.get(user_id), "")
+    update.message.reply_text(f'Правильный ответ:\n{correct_answer}')
+    return Status.CHOICE
+
+
 def main() -> None:
     """Start the bot."""
     load_dotenv()
@@ -84,6 +96,11 @@ def main() -> None:
         bot_db=bot_db,
         quiz=quiz,
     )
+    surrender = partial(
+        handle_surrender,
+        bot_db=bot_db,
+        quiz=quiz,
+    )
 
     conversation_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
@@ -95,6 +112,10 @@ def main() -> None:
                 ),
             ],
             Status.ATTEMPT: [
+                MessageHandler(
+                    Filters.regex('Сдаться'),
+                    surrender
+                ),
                 MessageHandler(
                     Filters.text & ~Filters.command,
                     solution_attempt
