@@ -1,3 +1,4 @@
+from enum import Enum, auto
 import os
 from functools import partial
 import random
@@ -6,9 +7,14 @@ import redis
 from dotenv import load_dotenv
 from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import (CallbackContext, CommandHandler, Filters,
-                          MessageHandler, Updater)
+                          MessageHandler, Updater, ConversationHandler)
 
 from quiz_api import load_quiz
+
+
+class Status(Enum):
+    CHOICE = auto()
+    ATTEMPT = auto()
 
 
 def start(update: Update, context: CallbackContext) -> None:
@@ -18,35 +24,35 @@ def start(update: Update, context: CallbackContext) -> None:
     update.message.reply_text(f'Привет {user.full_name}!',
                               reply_markup=ReplyKeyboardMarkup(
                                   reply_keyboard, resize_keyboard=True,))
+    return Status.CHOICE
 
 
-def help_command(update: Update, context: CallbackContext) -> None:
-    """Send a message when the command /help is issued."""
-    update.message.reply_text('Help!')
-
-
-def handle_quiz_commands(
+def handle_new_question_request(
     update: Update,
     context: CallbackContext,
     bot_db: redis.Redis,
     quiz: dict,
 ) -> None:
-    """Handle user commands"""
     user_id = update.effective_user.id
-    if update.message.text == 'Новый вопрос':
-        question = random.choice(list(quiz.keys()))
-        bot_db.set(name=user_id, value=question)
-        update.message.reply_text(question)
-        return
-    if update.message.text == 'Сдаться':
-        return
-    if update.message.text == 'Мой счет':
-        return
+    question = random.choice(list(quiz.keys()))
+    bot_db.set(name=user_id, value=question)
+    update.message.reply_text(question)
+    return Status.ATTEMPT
+
+
+def handle_solution_attempt(
+    update: Update,
+    context: CallbackContext,
+    bot_db: redis.Redis,
+    quiz: dict,
+) -> None:
+    user_id = update.effective_user.id
     correct_answer = quiz.get(bot_db.get(user_id), "")
     if update.message.text.lower() == correct_answer.lower():
         update.message.reply_text('Правильно! Поздравляю!')
-        return
+        return Status.CHOICE
     update.message.reply_text('Неправильно… Попробуешь ещё раз?')
+    return Status.ATTEMPT
 
 
 def main() -> None:
@@ -68,17 +74,36 @@ def main() -> None:
     dispatcher = updater.dispatcher
 
     quiz = load_quiz("questions/1vs1201.txt")
-    quiz_handler = partial(
-        handle_quiz_commands,
+    question_request = partial(
+        handle_new_question_request,
+        bot_db=bot_db,
+        quiz=quiz,
+    )
+    solution_attempt = partial(
+        handle_solution_attempt,
         bot_db=bot_db,
         quiz=quiz,
     )
 
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("help", help_command))
-
-    dispatcher.add_handler(MessageHandler(
-        Filters.text & ~Filters.command, quiz_handler))
+    conversation_handler = ConversationHandler(
+        entry_points=[CommandHandler("start", start)],
+        states={
+            Status.CHOICE: [
+                MessageHandler(
+                    Filters.regex('Новый вопрос'),
+                    question_request
+                ),
+            ],
+            Status.ATTEMPT: [
+                MessageHandler(
+                    Filters.text & ~Filters.command,
+                    solution_attempt
+                ),
+            ]
+        },
+        fallbacks=[CommandHandler("start", start)]
+    )
+    dispatcher.add_handler(conversation_handler)
 
     updater.start_polling()
     updater.idle()
