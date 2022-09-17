@@ -1,0 +1,4 @@
+hiredis==2.0.0
+python-dotenv==0.21.0
+python-telegram-bot==13.14
+vk-api==11.9.9
