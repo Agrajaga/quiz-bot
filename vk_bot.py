@@ -9,6 +9,71 @@ from vk_api.longpoll import VkEventType, VkLongPoll
 
 from quiz_api import load_quiz
 
+
+def user_in_quiz(func):
+    def _wrapper(*args, **kwargs):
+        _, db, user_id, _ = args
+        user_key = f'{user_id}_quiz_started'
+        if db.get(user_key):
+            func(*args, **kwargs)
+    return _wrapper
+
+
+def start_quiz(vk_api, db, user_id):
+    keyboard = VkKeyboard()
+    keyboard.add_button(
+        'Новый вопрос', color=VkKeyboardColor.PRIMARY)
+    keyboard.add_button('Сдаться', color=VkKeyboardColor.NEGATIVE)
+    keyboard.add_line()
+    keyboard.add_button('Мой счет', color=VkKeyboardColor.POSITIVE)
+    vk_api.messages.send(
+        user_id=user_id,
+        message=f'{user_id}, приветствую на нашей викторине!',
+        random_id=random.randint(1, 1000),
+        keyboard=keyboard.get_keyboard(),
+    )
+    user_key = f'{user_id}_quiz_started'
+    db.set(user_key, 1)
+
+
+@user_in_quiz
+def ask_question(vk_api, db, user_id, quiz):
+    question = random.choice(list(quiz.keys()))
+    db.set(name=user_id, value=question)
+    vk_api.messages.send(
+        user_id=user_id,
+        message=question,
+        random_id=random.randint(1, 1000),
+    )
+
+
+@user_in_quiz
+def get_answer(vk_api, db, user_id, quiz):
+    correct_answer = quiz.get(db.get(user_id), "")
+    vk_api.messages.send(
+        user_id=user_id,
+        message=f'Правильный ответ:\n{correct_answer}',
+        random_id=random.randint(1, 1000),
+    )
+
+
+@user_in_quiz
+def check_answer(vk_api, db, user_id, quiz):
+    correct_answer = quiz.get(db.get(user_id), "")
+    if event.text.lower() == correct_answer.lower():
+        vk_api.messages.send(
+            user_id=user_id,
+            message='Правильно! Поздравляю!',
+            random_id=random.randint(1, 1000),
+        )
+        return
+    vk_api.messages.send(
+        user_id=user_id,
+        message='Неправильно… Попробуешь ещё раз?',
+        random_id=random.randint(1, 1000),
+    )
+
+
 if __name__ == "__main__":
     load_dotenv()
 
@@ -28,54 +93,14 @@ if __name__ == "__main__":
     vk_api = vk_session.get_api()
     longpoll = VkLongPoll(vk_session)
 
-    quiz_started = False
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW and event.to_me:
             user_id = event.user_id
             if event.text == "Квиз":
-                quiz_started = True
-                keyboard = VkKeyboard()
-                keyboard.add_button(
-                    'Новый вопрос', color=VkKeyboardColor.PRIMARY)
-                keyboard.add_button('Сдаться', color=VkKeyboardColor.NEGATIVE)
-                keyboard.add_line()
-                keyboard.add_button('Мой счет', color=VkKeyboardColor.POSITIVE)
-                vk_api.messages.send(
-                    user_id=user_id,
-                    message=f'{user_id}, приветствую на нашей викторине!',
-                    random_id=random.randint(1, 1000),
-                    keyboard=keyboard.get_keyboard(),
-                )
-                continue
-            if not quiz_started:
-                continue
-            if event.text == 'Новый вопрос':
-                question = random.choice(list(quiz.keys()))
-                bot_db.set(name=user_id, value=question)
-                vk_api.messages.send(
-                    user_id=user_id,
-                    message=question,
-                    random_id=random.randint(1, 1000),
-                )
-                continue
-            if event.text == 'Сдаться':
-                correct_answer = quiz.get(bot_db.get(user_id), "")
-                vk_api.messages.send(
-                    user_id=user_id,
-                    message=f'Правильный ответ:\n{correct_answer}',
-                    random_id=random.randint(1, 1000),
-                )
-                continue
-            correct_answer = quiz.get(bot_db.get(user_id), "")
-            if event.text.lower() == correct_answer.lower():
-                vk_api.messages.send(
-                    user_id=user_id,
-                    message='Правильно! Поздравляю!',
-                    random_id=random.randint(1, 1000),
-                )
-                continue
-            vk_api.messages.send(
-                user_id=user_id,
-                message='Неправильно… Попробуешь ещё раз?',
-                random_id=random.randint(1, 1000),
-            )
+                start_quiz(vk_api, bot_db, user_id)
+            elif event.text == 'Новый вопрос':
+                ask_question(vk_api, bot_db, user_id, quiz)
+            elif event.text == 'Сдаться':
+                get_answer(vk_api, bot_db, user_id, quiz)
+            else:
+                check_answer(vk_api, bot_db, user_id, quiz)
