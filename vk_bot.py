@@ -86,7 +86,8 @@ if __name__ == "__main__":
         password=redis_password,
         decode_responses=True,
     )
-    quiz = load_quiz("questions/1vs1201.txt")
+    quiz_filename = os.getenv('QUIZ_FILENAME')
+    quiz = load_quiz(quiz_filename)
 
     vk_token = os.getenv("VK_TOKEN")
     vk_session = vk.VkApi(token=vk_token)

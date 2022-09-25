@@ -85,7 +85,9 @@ def main() -> None:
 
     dispatcher = updater.dispatcher
 
-    quiz = load_quiz("questions/1vs1201.txt")
+    quiz_filename = os.getenv('QUIZ_FILENAME')
+    quiz = load_quiz(quiz_filename)
+    
     question_request = partial(
         handle_new_question_request,
         bot_db=bot_db,

@@ -21,6 +21,7 @@ VK_TOKEN=<Токен вашего VK-бота>
 REDIS_HOST=<Адрес облачного сервиса Redis>
 REDIS_PORT=<Порт сервиса Redis>
 REDIS_PASSWORD=<Пароль сервиса Redis>
+QUIZ_FILENAME=<Путь и имя файла с вопросами>
 ```
 
 *Подробнее*:  
