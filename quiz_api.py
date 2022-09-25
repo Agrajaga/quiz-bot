@@ -10,10 +10,10 @@ def load_quiz(filename: str) -> dict:
         for fragment in question_text.split("\n\n"):
             fragment = fragment.replace("\n", " ")
             if fragment[:6].lower() == "вопрос":
-                question = re.sub("^Вопрос \d+:", "", fragment).strip()
+                question = re.sub(fr"^Вопрос \d+:", "", fragment).strip()
             if fragment[:5].lower() == "ответ":
-                answer = re.sub("^Ответ:", "", fragment).strip()
-                answer = re.split("\.|\(", answer)[0]
+                answer = re.sub(fr"^Ответ:", "", fragment).strip()
+                answer = re.split(fr"\.|\(", answer)[0]
         quiz[question] = answer
     return quiz
 
